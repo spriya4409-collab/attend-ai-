@@ -323,3 +323,152 @@ export function calculateSemesterForecast(
 
   return { bestCase, expectedCase, riskCase };
 }
+
+export type LeaveCreditRule =
+  | 'CREDITED_AS_ATTENDED'
+  | 'EXEMPTED_FROM_TOTAL'
+  | 'TREATED_AS_ABSENT'
+  | 'OD_ATTENDED_MEDICAL_EXEMPT'
+  | 'CONDONED_50_PERCENT';
+
+export interface LeaveSimulationInput {
+  currentAttended: number;
+  currentConducted: number;
+  odDays: number;
+  medicalDays: number;
+  classesPerDay?: number;
+  customAffectedClasses?: number;
+  reason?: string;
+  rule: LeaveCreditRule;
+}
+
+export interface LeaveSimulationResult {
+  currentPercentage: number;
+  projectedPercentage: number;
+  diffPercentage: number;
+  projectedAttended: number;
+  projectedConducted: number;
+  totalLeaveDays: number;
+  totalAffectedClasses: number;
+  odClasses: number;
+  medicalClasses: number;
+  normalAbsenceProjectedPercentage: number;
+  normalAbsenceDiffPercentage: number;
+  remainsAbove90: boolean;
+  remainsAbove75: boolean;
+  projectedStatus: RiskStatus;
+  isCriticalWarning: boolean;
+  projectedSafeMisses75: number;
+  projectedSafeMisses90: number;
+  requiredClassesTo75: number;
+  ruleExplanation: string;
+}
+
+/**
+ * OD & Medical Leave Simulator:
+ * Accurately models institutional attendance impact of On-Duty (OD) and Medical Leave
+ * under configurable university regulations.
+ */
+export function simulateLeaveOutcome(input: LeaveSimulationInput): LeaveSimulationResult {
+  const {
+    currentAttended,
+    currentConducted,
+    odDays,
+    medicalDays,
+    classesPerDay = 6,
+    customAffectedClasses,
+    rule = 'CREDITED_AS_ATTENDED',
+  } = input;
+
+  const currentPct = calculateAttendancePercentage(currentAttended, currentConducted);
+  const totalLeaveDays = Math.max(0, odDays) + Math.max(0, medicalDays);
+
+  const rawOdClasses = Math.max(0, odDays) * classesPerDay;
+  const rawMedicalClasses = Math.max(0, medicalDays) * classesPerDay;
+  const calculatedTotalClasses = rawOdClasses + rawMedicalClasses;
+
+  const totalAffectedClasses = customAffectedClasses !== undefined && customAffectedClasses > 0
+    ? customAffectedClasses
+    : calculatedTotalClasses;
+
+  // Proportionally allocate affected classes if custom count provided
+  const odClasses = totalLeaveDays > 0
+    ? Math.round((odDays / totalLeaveDays) * totalAffectedClasses)
+    : 0;
+  const medicalClasses = totalAffectedClasses - odClasses;
+
+  let projectedAttended = currentAttended;
+  let projectedConducted = currentConducted;
+  let ruleExplanation = '';
+
+  switch (rule) {
+    case 'CREDITED_AS_ATTENDED':
+      // Approved On-Duty and Medical Leave is recognized by faculty and credited as attended (100% duty credit)
+      projectedAttended = currentAttended + totalAffectedClasses;
+      projectedConducted = currentConducted + totalAffectedClasses;
+      ruleExplanation = 'Both approved OD and verified Medical Leave are credited as attended (100% attendance duty credit).';
+      break;
+
+    case 'EXEMPTED_FROM_TOTAL':
+      // Classes conducted while on authorized leave are deducted from the conducted pool (not counted in divisor)
+      projectedAttended = currentAttended;
+      projectedConducted = currentConducted; // Leave classes are not counted in divisor
+      ruleExplanation = 'Authorized OD and Medical Leave periods are completely waived from the conducted class pool.';
+      break;
+
+    case 'TREATED_AS_ABSENT':
+      // Normal absence rule (no institutional exemption granted)
+      projectedAttended = currentAttended;
+      projectedConducted = currentConducted + totalAffectedClasses;
+      ruleExplanation = 'Absence is treated without institutional exemption (marked as absent in the attendance ledger).';
+      break;
+
+    case 'OD_ATTENDED_MEDICAL_EXEMPT':
+      // OD gets full duty credit, Medical leave is exempted from conducted divisor
+      projectedAttended = currentAttended + odClasses;
+      projectedConducted = currentConducted + odClasses;
+      ruleExplanation = 'On-Duty counts as full attendance credit; Medical Leave is exempted from the conducted count.';
+      break;
+
+    case 'CONDONED_50_PERCENT':
+      // 50% condonation relief
+      const halfCredit = Math.round(totalAffectedClasses * 0.5);
+      projectedAttended = currentAttended + halfCredit;
+      projectedConducted = currentConducted + totalAffectedClasses;
+      ruleExplanation = 'Institutional condonation policy applies: 50% attendance relief granted for verified certificates.';
+      break;
+  }
+
+  const projPct = calculateAttendancePercentage(projectedAttended, projectedConducted);
+  const projectedStatus = getRiskStatus(projPct);
+
+  // Normal unapproved absence outcome for comparison
+  const normalConducted = currentConducted + totalAffectedClasses;
+  const normalPct = calculateAttendancePercentage(currentAttended, normalConducted);
+
+  const safeMisses75 = calculateSafeMisses(projectedAttended, projectedConducted, 75);
+  const safeMisses90 = calculateSafeMisses(projectedAttended, projectedConducted, 90);
+  const required75 = calculateRequiredClasses(projectedAttended, projectedConducted, 75);
+
+  return {
+    currentPercentage: Number(currentPct.toFixed(2)),
+    projectedPercentage: Number(projPct.toFixed(2)),
+    diffPercentage: Number((projPct - currentPct).toFixed(2)),
+    projectedAttended,
+    projectedConducted,
+    totalLeaveDays,
+    totalAffectedClasses,
+    odClasses,
+    medicalClasses,
+    normalAbsenceProjectedPercentage: Number(normalPct.toFixed(2)),
+    normalAbsenceDiffPercentage: Number((normalPct - currentPct).toFixed(2)),
+    remainsAbove90: projPct >= 90,
+    remainsAbove75: projPct >= 75,
+    projectedStatus,
+    isCriticalWarning: projPct < 75,
+    projectedSafeMisses75: safeMisses75,
+    projectedSafeMisses90: safeMisses90,
+    requiredClassesTo75: required75,
+    ruleExplanation,
+  };
+}

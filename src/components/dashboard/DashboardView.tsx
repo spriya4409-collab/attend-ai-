@@ -1,9 +1,11 @@
 import {
+  Activity,
   AlertCircle,
   AlertTriangle,
   ArrowRight,
   Award,
   BellRing,
+  Bot,
   Calculator,
   Calendar,
   CheckCircle2,
@@ -12,9 +14,11 @@ import {
   Compass,
   FileText,
   Flame,
+  HeartPulse,
   HelpCircle,
   Play,
   RotateCcw,
+  Scale,
   ShieldAlert,
   ShieldCheck,
   Sparkles,
@@ -32,6 +36,9 @@ import {
   simulateAttendance,
 } from '../../utils/attendanceCalculations';
 import { TabType } from '../common/Navigation';
+import { AttendanceAdvisorModal } from './AttendanceAdvisorModal';
+import { ODLeaveSimulator } from './ODLeaveSimulator';
+import { VisualAttendanceHealth } from './VisualAttendanceHealth';
 
 interface DashboardViewProps {
   onNavigate: (tab: TabType) => void;
@@ -83,6 +90,39 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
 
   return (
     <div className="space-y-6 pb-20 md:pb-8 animate-in fade-in duration-300">
+      {/* 0. Highlighted Capabilities Ribbon */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-indigo-950/60 to-slate-900 border border-indigo-500/30 shadow-lg">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-indigo-600/30 border border-indigo-500/40 flex items-center justify-center text-indigo-400">
+            <Sparkles className="w-4 h-4 text-cyan-400 animate-pulse" />
+          </div>
+          <div>
+            <h2 className="font-extrabold text-sm sm:text-base text-white tracking-tight">
+              AttendAI – Smart Attendance Predictor
+            </h2>
+            <p className="text-[11px] text-slate-400">
+              Live timetable intelligence • Verified semester analytics (29 Aug – 29 Nov 2026)
+            </p>
+          </div>
+        </div>
+
+        {/* The Three Highlighted Capabilities */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-semibold text-xs shadow-sm shadow-emerald-500/10">
+            <HeartPulse className="w-3.5 h-3.5 text-emerald-400" />
+            Visual Attendance Health
+          </span>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 font-semibold text-xs shadow-sm shadow-cyan-500/10">
+            <Scale className="w-3.5 h-3.5 text-cyan-400" />
+            OD & Leave Simulator
+          </span>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-300 font-semibold text-xs shadow-sm shadow-purple-500/10">
+            <Bot className="w-3.5 h-3.5 text-purple-400" />
+            Attendance Advisor
+          </span>
+        </div>
+      </div>
+
       {/* 1. Value Proposition Banner: The Three Questions Answered Instantly */}
       <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950/40 to-slate-900 border border-indigo-500/20 p-5 sm:p-6 shadow-2xl">
         <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -241,6 +281,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
         </div>
       </div>
 
+      {/* FEATURE 1: Visual Attendance Tracking Section */}
+      <VisualAttendanceHealth />
+
       {/* 2. Key Metrics Bar */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         <div className="p-4 rounded-2xl bg-slate-900/70 border border-slate-800">
@@ -343,7 +386,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
             ) : (
               tomorrowPeriods.map((period) => {
                 const sub = subjects.find(s => s.subjectCode === period.subjectCode);
-                const subPct = sub ? sub.percentage : 80;
                 const ifMissOutcome = sub ? predictSkipOutcome(sub.attended, sub.conducted, 1) : null;
 
                 return (
@@ -352,7 +394,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
                     className="p-3 rounded-xl bg-slate-800/50 border border-slate-800 hover:border-slate-700 transition-colors flex items-center justify-between gap-3 text-xs"
                   >
                     <div className="flex items-center gap-3">
-                      <span className="w-7 h-7 rounded-lg bg-indigo-500/10 text-indigo-300 font-bold flex items-center justify-center text-[11px] shrink-0 border border-indigo-500/20">
+                      <span className="w-7 h-7 rounded-lg bg-indigo-500/10 text-indigo-300 font-bold flex items-center justify-center text-11px shrink-0 border border-indigo-500/20">
                         P{period.periodNumber}
                       </span>
                       <div>
@@ -534,6 +576,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
         </div>
       </div>
 
+      {/* FEATURE 2: OD & Medical Leave Simulator */}
+      <ODLeaveSimulator />
+
       {/* 5. Subject Cards Quick Overview */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
@@ -603,6 +648,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onNavigate }) => {
           })}
         </div>
       </div>
+
+      {/* FEATURE 3: Floating Attendance Advisor AI Chatbot */}
+      <AttendanceAdvisorModal />
     </div>
   );
 };
