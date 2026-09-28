@@ -1,0 +1,6 @@
+{
+  "name": "AttendAI – Smart Attendance Predictor",
+  "description": "Smart attendance predictor for college students to avoid detention risk, calculate safe misses, plan recovery, and forecast semester attendance using real timetables.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
